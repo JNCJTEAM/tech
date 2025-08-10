@@ -152,41 +152,41 @@ def time_name():
     current_time = now.strftime("%H%M%S")
     return f"{date} {current_time}.mp4"
 
+failed_counter = 0
+async def download_video(url, cmd, name):
+    global failed_counter
 
-async def download_video(url,cmd, name):
     if "trans" in url:
         logging.info(cmd)
         print(cmd)
-        k = subprocess.run(download_cmd, check=True)
-    else :
+        # Run cmd asynchronously
+        proc = await asyncio.create_subprocess_shell(cmd)
+        await proc.communicate()
+        retcode = proc.returncode
+    else:
         download_cmd = f'{cmd} -R 25 --fragment-retries 25 --external-downloader aria2c --downloader-args "aria2c: -x 16 -j 32"'
         logging.info(download_cmd)
         print(download_cmd)
-        k = subprocess.run(download_cmd, shell=True)
-    global failed_counter
-    
-    if "visionias" in cmd and k.returncode != 0 and failed_counter <= 10:
+        proc = await asyncio.create_subprocess_shell(download_cmd)
+        await proc.communicate()
+        retcode = proc.returncode
+
+    if "visionias" in cmd and retcode != 0 and failed_counter <= 10:
         failed_counter += 1
         await asyncio.sleep(5)
-        await download_video(url, cmd, name)
-    failed_counter = 0
-    try:
-        if os.path.isfile(name):
-            return name
-        elif os.path.isfile(f"{name}.webm"):
-            return f"{name}.webm"
-        name = name.split(".")[0]
-        if os.path.isfile(f"{name}.mkv"):
-            return f"{name}.mkv"
-        elif os.path.isfile(f"{name}.mp4"):
-            return f"{name}.mp4"
-        elif os.path.isfile(f"{name}.mp4.webm"):
-            return f"{name}.mp4.webm"
+        return await download_video(url, cmd, name)
 
-        return name
-    except FileNotFoundError as exc:
-        return os.path.isfile.splitext[0] + "." + "mp4"
+    failed_counter = 0  # reset after success or max retries
 
+    base_name = os.path.splitext(name)[0]
+
+    for ext in ['', '.webm', '.mkv', '.mp4', '.mp4.webm']:
+        file_path = base_name + ext
+        if os.path.isfile(file_path):
+            return file_path
+
+    # fallback return original name
+    return name
 
 async def send_doc(bot: Client, m: Message,cc,ka,cc1,prog,count,name):
     reply = await m.reply_text(f"Uploading » `{name}`")
