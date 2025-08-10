@@ -154,11 +154,17 @@ def time_name():
 
 
 async def download_video(url,cmd, name):
-    download_cmd = f'{cmd} -R 25 --fragment-retries 25 --external-downloader aria2c --downloader-args "aria2c: -x 16 -j 32"'
+    if "trans" in url:
+        logging.info(cmd)
+        print(cmd)
+        k = subprocess.run(download_cmd, check=True)
+    else :
+        download_cmd = f'{cmd} -R 25 --fragment-retries 25 --external-downloader aria2c --downloader-args "aria2c: -x 16 -j 32"'
+        logging.info(download_cmd)
+        print(download_cmd)
+        k = subprocess.run(download_cmd, shell=True)
     global failed_counter
-    print(download_cmd)
-    logging.info(download_cmd)
-    k = subprocess.run(download_cmd, shell=True)
+    
     if "visionias" in cmd and k.returncode != 0 and failed_counter <= 10:
         failed_counter += 1
         await asyncio.sleep(5)
